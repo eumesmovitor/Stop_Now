@@ -1,65 +1,30 @@
 <?php
+require_once 'repository/NotificationRepository.php';
+
 class Notification {
     private $conn;
+    private $repository;
     private $table = 'notifications';
 
     public function __construct($db) {
         $this->conn = $db;
+        $this->repository = new NotificationRepository($db);
     }
 
     public function create($data) {
-        $query = "INSERT INTO " . $this->table . " 
-                  (user_id, type, title, message, data, is_read, created_at)
-                  VALUES 
-                  (:user_id, :type, :title, :message, :data, :is_read, NOW())";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $data['user_id']);
-        $stmt->bindParam(':type', $data['type']);
-        $stmt->bindParam(':title', $data['title']);
-        $stmt->bindParam(':message', $data['message']);
-        $stmt->bindParam(':data', json_encode($data['data'] ?? []));
-        $stmt->bindParam(':is_read', $data['is_read'] ?? 0, PDO::PARAM_BOOL);
-        
-        return $stmt->execute();
+        return $this->repository->createNotification($data);
     }
 
     public function getByUser($userId, $limit = 20, $offset = 0) {
-        $query = "SELECT * FROM " . $this->table . " 
-                  WHERE user_id = :user_id 
-                  ORDER BY created_at DESC 
-                  LIMIT :limit OFFSET :offset";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $userId);
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return $stmt->fetchAll();
+        return $this->repository->findByUser($userId, $limit, $offset);
     }
 
     public function getUnreadCount($userId) {
-        $query = "SELECT COUNT(*) FROM " . $this->table . " 
-                  WHERE user_id = :user_id AND is_read = 0";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $userId);
-        $stmt->execute();
-        
-        return $stmt->fetchColumn();
+        return $this->repository->getUnreadCount($userId);
     }
 
     public function markAsRead($id, $userId) {
-        $query = "UPDATE " . $this->table . " 
-                  SET is_read = 1, read_at = NOW() 
-                  WHERE id = :id AND user_id = :user_id";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $id);
-        $stmt->bindParam(':user_id', $userId);
-        
-        return $stmt->execute();
+        return $this->repository->markAsRead($id, $userId);
     }
 
     public function markAllAsRead($userId) {

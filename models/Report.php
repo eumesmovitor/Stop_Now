@@ -1,42 +1,21 @@
 <?php
+require_once 'repository/ReportRepository.php';
+
 class Report {
     private $conn;
+    private $repository;
 
     public function __construct($db) {
         $this->conn = $db;
+        $this->repository = new ReportRepository($db);
     }
 
     public function getSpotStats($spotId) {
-        $query = "SELECT 
-                    COUNT(b.id) as total_bookings,
-                    SUM(b.final_price) as total_revenue,
-                    AVG(r.rating) as avg_rating,
-                    COUNT(r.id) as total_reviews
-                  FROM parking_spots ps
-                  LEFT JOIN bookings b ON ps.id = b.spot_id
-                  LEFT JOIN reviews r ON b.id = r.booking_id
-                  WHERE ps.id = :spot_id";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':spot_id', $spotId);
-        $stmt->execute();
-        
-        return $stmt->fetch();
+        return $this->repository->getSpotStats($spotId);
     }
 
     public function getUserStats($userId) {
-        $query = "SELECT 
-                    (SELECT COUNT(*) FROM parking_spots WHERE owner_id = :user_id) as total_spots,
-                    (SELECT COUNT(*) FROM bookings WHERE renter_id = :user_id) as total_bookings_as_renter,
-                    (SELECT COUNT(*) FROM bookings b JOIN parking_spots ps ON b.spot_id = ps.id WHERE ps.owner_id = :user_id) as total_bookings_as_owner,
-                    (SELECT SUM(final_price) FROM bookings b JOIN parking_spots ps ON b.spot_id = ps.id WHERE ps.owner_id = :user_id) as total_earnings,
-                    (SELECT AVG(rating) FROM reviews r JOIN bookings b ON r.booking_id = b.id JOIN parking_spots ps ON b.spot_id = ps.id WHERE ps.owner_id = :user_id) as avg_rating_as_owner";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $userId);
-        $stmt->execute();
-        
-        return $stmt->fetch();
+        return $this->repository->getUserStats($userId);
     }
 
     public function getMonthlyRevenue($userId, $year = null) {
@@ -140,20 +119,7 @@ class Report {
     }
 
     public function getAdminStats() {
-        $query = "SELECT 
-                    (SELECT COUNT(*) FROM users) as total_users,
-                    (SELECT COUNT(*) FROM parking_spots WHERE status = 'active') as total_spots,
-                    (SELECT COUNT(*) FROM bookings) as total_bookings,
-                    (SELECT SUM(final_price) FROM bookings WHERE booking_status IN ('confirmed', 'active', 'completed')) as total_revenue,
-                    (SELECT AVG(rating) FROM reviews) as avg_rating,
-                    (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as new_users_30d,
-                    (SELECT COUNT(*) FROM parking_spots WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as new_spots_30d,
-                    (SELECT COUNT(*) FROM bookings WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as new_bookings_30d";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute();
-        
-        return $stmt->fetch();
+        return $this->repository->getAdminStats();
     }
 }
 ?>

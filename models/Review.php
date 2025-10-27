@@ -1,69 +1,30 @@
 <?php
+require_once 'repository/ReviewRepository.php';
+
 class Review {
     private $conn;
+    private $repository;
     private $table = 'reviews';
 
     public function __construct($db) {
         $this->conn = $db;
+        $this->repository = new ReviewRepository($db);
     }
 
     public function getBySpot($spotId) {
-        $query = "SELECT r.*, u.name as reviewer_name
-                  FROM " . $this->table . " r
-                  JOIN bookings b ON r.booking_id = b.id
-                  JOIN users u ON r.reviewer_id = u.id
-                  WHERE b.spot_id = :spot_id
-                  ORDER BY r.created_at DESC
-                  LIMIT 10";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':spot_id', $spotId);
-        $stmt->execute();
-        
-        return $stmt->fetchAll();
+        return $this->repository->findBySpot($spotId);
     }
 
     public function getByUser($userId) {
-        $query = "SELECT r.*, ps.title as spot_title
-                  FROM " . $this->table . " r
-                  JOIN bookings b ON r.booking_id = b.id
-                  JOIN parking_spots ps ON b.spot_id = ps.id
-                  WHERE r.reviewer_id = :user_id
-                  ORDER BY r.created_at DESC";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $userId);
-        $stmt->execute();
-        
-        return $stmt->fetchAll();
+        return $this->repository->findByUser($userId);
     }
 
     public function create($data) {
-        $query = "INSERT INTO " . $this->table . " 
-                  (booking_id, reviewer_id, rating, comment, created_at)
-                  VALUES 
-                  (:booking_id, :reviewer_id, :rating, :comment, NOW())";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':booking_id', $data['booking_id']);
-        $stmt->bindParam(':reviewer_id', $data['reviewer_id']);
-        $stmt->bindParam(':rating', $data['rating']);
-        $stmt->bindParam(':comment', $data['comment']);
-        
-        return $stmt->execute();
+        return $this->repository->createReview($data);
     }
 
     public function getAverageRating($spotId) {
-        $query = "SELECT AVG(r.rating) as avg_rating, COUNT(r.id) as total_reviews
-                  FROM " . $this->table . " r
-                  JOIN bookings b ON r.booking_id = b.id
-                  WHERE b.spot_id = :spot_id";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':spot_id', $spotId);
-        $stmt->execute();
-        
-        return $stmt->fetch();
+        return $this->repository->getAverageRating($spotId);
     }
 
     public function getRatingDistribution($spotId) {
